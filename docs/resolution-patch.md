@@ -23,7 +23,7 @@ The image base is `0x400000`, and every change is inside the `.text` section (vi
 | Fullscreen 1280x1024 | Table 1, Table 2 (Table 3 is optional) |
 | Windowed 1280x1024 | Table 1 and every table of the [window mode patch](https://github.com/wnsrn3436/re-atrox-window-mode/blob/main/docs/window-mode.md) |
 
-Table 2 is the same bytes as part of the window mode patch.
+The bytes in Table 2 are identical to part of the window mode patch.
 
 
 ## Table 1. 1280x1024 resolution
@@ -32,8 +32,8 @@ Table 2 is the same bytes as part of the window mode patch.
 |---|---|---|---|---|
 | `0x004DC862` | `0xDC862` | `20 03 00 00` | `00 05 00 00` | Mode 1 width 800 → 1280 |
 | `0x004DC86E` | `0xDC86E` | `58 02 00 00` | `00 04 00 00` | Mode 1 height 600 → 1024 |
-| `0x004DC876` | `0xDC876` | `20 03 00 00` | `00 05 00 00` | Mode 1 constant 800 → 1280 |
-| `0x004DC87D` | `0xDC87D` | `E0 01 00 00` | `B0 03 00 00` | Mode 1 constant 480 → 944 |
+| `0x004DC876` | `0xDC876` | `20 03 00 00` | `00 05 00 00` | Mode 1 calculation constant 800 → 1280 |
+| `0x004DC87D` | `0xDC87D` | `E0 01 00 00` | `B0 03 00 00` | Mode 1 calculation constant 480 → 944 |
 | `0x0041D11A` | `0x1D11A` | `01 00 00 00` | `F1 00 00 00` | Interface x 1 → 241 |
 | `0x0041D211` | `0x1D211` | `AD 01 00 00` | `55 03 00 00` | Interface y 429 → 853 |
 | `0x0041D26E` | `0x1D26E` | `41 02 00 00` | `31 03 00 00` | `[0x006A6548]` x 577 → 817 |
@@ -53,7 +53,7 @@ Table 2 is the same bytes as part of the window mode patch.
 | `0x0041D9EC` | `0x1D9EC` | `8B 40 24 99 2B C2 8B F0 D1 FE` | `E9 6A FF FF FF 90 90 90 90 90` | Jump to the code below |
 | `0x0041D95B` | `0x1D95B` | 21 x `CC` | `8B 40 24 05 A8 01 00 00 99 2B C2 8B F0 D1 FE E9 87 00 00 00 90` | Add 212 to the screen center y |
 
-The original and new bytes are 4-byte immediates of the instructions (little endian). Only the first one or two bytes actually change.
+The original and new bytes are the instructions' 4-byte immediate values (little endian). Only the first one or two bytes actually change.
 
 
 ## Table 2. Fixed resolution mode and starting position
@@ -62,25 +62,25 @@ The original and new bytes are 4-byte immediates of the instructions (little end
 |---|---|---|---|---|
 | `0x00489521` | `0x89521` | `8B 40 28 50 E8 AD 80 F7 FF` | `EB C8 90 90 90 90 90 90 90` | Jump to the code below |
 | `0x004894EB` | `0x894EB` | 13 x `CC` | `B8 01 00 00 00 50 E8 E1 80 F7 FF EB 32` | Pass resolution mode 1 |
-| `0x004DC496` | `0xDC496` | `BF 01 00 00 00` | `BF 00 00 00 00` | Starting view position |
+| `0x004DC496` | `0xDC496` | `BF 01 00 00 00` | `BF 00 00 00 00` | Screen position at startup |
 
 
 ## Table 3. Scroll detour
 
 | Virtual address | File offset | Original bytes | New bytes | Meaning |
 |---|---|---|---|---|
-| `0x0042D477` | `0x2D477` | `56 E8 FD 9D FD FF` | `EB 3C 90 90 90 90` | Redirect the first scroll call |
+| `0x0042D477` | `0x2D477` | `56 E8 FD 9D FD FF` | `EB 3C 90 90 90 90` | Redirect the first scroll call below |
 | `0x0042D481` | `0x2D481` | `53` | `90` | Move `push ebx` below |
-| `0x0042D484` | `0x2D484` | `E8 8B 4F FD FF` | `EB 3A 90 90 90` | Redirect the second scroll call |
+| `0x0042D484` | `0x2D484` | `E8 8B 4F FD FF` | `EB 3A 90 90 90` | Redirect the second scroll call below |
 | `0x0042D4B5` | `0x2D4B5` | 11 x `90` | `90 90 90 56 E8 BC 9D FD FF EB BD` | First call |
 | `0x0042D4C0` | `0x2D4C0` | 16 x `CC` | `90 90 90 53 E8 4B 4F FD FF EB BE 90 90 90 90 90` | Second call |
 
 This is the scroll detour of the window mode patch with the `sar esi, 3` and `sar ebx, 3` slots blanked to `90 90 90`. The calls are only moved and jump straight back, so it behaves exactly like the original. The bytes were in the fullscreen executable, so they are listed here too.
 
 
-## Making mode 1 1280x1024
+## Setting resolution mode 1 to 1280x1024
 
-`0x004DC840` takes a resolution mode and sets the screen size. Originally mode 0 is 640x480 and mode 1 is 800x600. Table 2 makes the game always pass mode 1, and the first four rows of Table 1 change the values of mode 1.
+`0x004DC840` is the function that takes a resolution mode and sets the screen size. Originally mode 0 is 640x480 and mode 1 is 800x600. Table 2 makes the game always pass mode 1, and the first four rows of Table 1 change the values of mode 1.
 
 ```
 004DC85A  E8 26 BD F2 FF        call 0x00408585      ; returns the global object 0x00B1DE78
@@ -102,7 +102,7 @@ What range `[esi+0x7C]` and `[esi+0x80]` describe, and why the value standing in
 
 ## Moving the interface coordinates
 
-The positions of the bottom interface and related elements are constants in the code, laid out for an 800x600 screen. Every x gets 240 added and every y gets 424 added. 240 is (1280 - 800) / 2 and 424 is 1024 - 600, so the 800x600 interface sits at the bottom center of the 1280x1024 screen.
+The positions of the bottom interface and related elements are constants in the code, laid out for an 800x600 screen. The patch adds 240 to every x and 424 to every y. 240 is (1280 - 800) / 2 and 424 is 1024 - 600, so the 800x600 interface sits at the bottom center of the 1280x1024 screen.
 
 ```
 0041D20D  83 EC 10              sub  esp, 0x10
@@ -120,7 +120,7 @@ The positions of the bottom interface and related elements are constants in the 
 
 The `mov eax, 1` at `0x0041D119` is used as the x of a rectangle in the `0x0041D20D` block, which is the branch taken for mode 1. That is why the 1 became 241.
 
-`0x0041D9EC` takes half of the screen size to place something at the center of the screen. It now jumps to the free space at `0x0041D95B` so that (height + 424) / 2 is used instead of half the height. With 1024 that gives 724, the center (300 + 424) of the 800x600 area moved down by 424.
+The code at `0x0041D9EC` takes half the screen size to place something at the center of the screen. It now jumps to the free space at `0x0041D95B` so that (height + 424) / 2 is used instead of half the height. With 1024 that gives 724, the center (300 + 424) of the 800x600 area moved down by 424.
 
 ```
 ; original
@@ -143,7 +143,7 @@ The `mov eax, 1` at `0x0041D119` is used as the x of a rectangle in the `0x0041D
 0041D96A  E9 87 00 00 00     jmp  0x0041D9F6
 ```
 
-What gets placed at the center is left for further investigation.
+What gets placed at the center has not been checked yet.
 
 
 ## Patching by hand
